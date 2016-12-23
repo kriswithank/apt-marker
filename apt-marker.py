@@ -20,7 +20,7 @@ def handle_response(term_deps):
         if response == 'h':
             print("s -> apt show package\np -> pass on package (do nothing)\nh -> help\na -> sudo apt-make auto package\nc -> confirm manual\nq -> quit\nr -> apt rdepends --installed")
         elif response == 's':
-            term_show = subprocess.run(['apt', 'show', term_deps.args[3]])
+            term_show = subprocess.run(['apt-cache', 'show', term_deps.args[3]])
         elif response == 'r':
             print(term_deps.stdout.decode('utf-8'))
         elif response == 'p':
