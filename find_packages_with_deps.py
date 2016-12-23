@@ -1,3 +1,4 @@
+from os import rename
 import subprocess
 
 
@@ -53,3 +54,6 @@ with open('packages.txt') as source_file, open('packages.result.txt', 'w+') as o
             elif result == EXIT:
                 output_file.write(line)
                 quit = True
+
+rename('packages.txt', 'packages.old.txt')
+rename('packages.result.txt', 'packages.txt')
