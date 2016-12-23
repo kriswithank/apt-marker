@@ -9,5 +9,7 @@ Currently there is no built in way to generate packages.txt, this will be addres
 
     [user@mypc]$ apt-mark showmanual > packages.txt
 
+Requires python3 to work.
+
 Also on the TODO list is to use the backwards compatible and more stable apt-get and
 apt-cache commands.
