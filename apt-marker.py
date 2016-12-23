@@ -3,6 +3,10 @@ import subprocess
 
 
 
+SOURCE_FILE_NAME = 'packages.txt'
+OUTPUT_FILE_NAME = 'packages.results.txt'
+OLD_FILE_NAME = 'packages.old.txt'
+
 KEEP_PKG = 0
 REMOVE_PKG = 1
 EXIT = 2
@@ -33,7 +37,7 @@ def handle_response(term_deps):
 
 
 quit = False
-with open('packages.txt') as source_file, open('packages.result.txt', 'w+') as output_file:
+with open(SOURCE_FILE_NAME) as source_file, open(OUTPUT_FILE_NAME, 'w+') as output_file:
     for line in source_file:
 
         if quit:
@@ -55,5 +59,5 @@ with open('packages.txt') as source_file, open('packages.result.txt', 'w+') as o
                 output_file.write(line)
                 quit = True
 
-rename('packages.txt', 'packages.old.txt')
-rename('packages.result.txt', 'packages.txt')
+rename(SOURCE_FILE_NAME, OLD_FILE_NAME)
+rename(OUTPUT_FILE_NAME, SOURCE_FILE_NAME)
