@@ -7,6 +7,14 @@ SOURCE_FILE_NAME = 'packages.txt'
 OUTPUT_FILE_NAME = 'packages.results.txt'
 OLD_FILE_NAME = 'packages.old.txt'
 
+MENU = """  s -> apt show package
+  p -> pass on package (do nothing)
+  h -> help
+  a -> sudo apt-make auto package
+  c -> confirm manual
+  q -> quit
+  r -> apt rdepends --installed"""
+
 KEEP_PKG = 0
 REMOVE_PKG = 1
 EXIT = 2
@@ -18,7 +26,7 @@ def handle_response(term_deps):
         response = input('Enter a command (h for help): ')
 
         if response == 'h':
-            print("s -> apt show package\np -> pass on package (do nothing)\nh -> help\na -> sudo apt-make auto package\nc -> confirm manual\nq -> quit\nr -> apt rdepends --installed")
+            print(MENU)
         elif response == 's':
             term_show = subprocess.run(['apt-cache', 'show', term_deps.args[3]])
         elif response == 'r':
