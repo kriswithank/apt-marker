@@ -109,23 +109,18 @@ quit = False
 with open(SOURCE_FILE_NAME) as source_file, open(OUTPUT_FILE_NAME, 'w+') as output_file:
     for line in source_file:
 
-        if quit:
-            output_file.write(line)
-            continue
-
         pkg = PackageMinipulator(line.strip())
 
-        if pkg.has_rdeps():
+        if (not quit) and pkg.has_rdeps():
             print(pkg.get_rdeps())
             result = handle_response(pkg)
 
-            if result == KEEP_PKG:
-                output_file.write(line)
+            if result == REMOVE_PKG:
+                continue
             elif result == EXIT:
-                output_file.write(line)
                 quit = True
-        else:
-            output_file.write(line)
+
+        output_file.write(line)
 
 rename(SOURCE_FILE_NAME, OLD_FILE_NAME)
 rename(OUTPUT_FILE_NAME, SOURCE_FILE_NAME)
