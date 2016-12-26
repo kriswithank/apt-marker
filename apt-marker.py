@@ -16,6 +16,7 @@ MENU = """  s -> apt show package
   r -> apt rdepends --installed
   rr -> apt rdepends --installed --recurse"""
 
+# TODO: move these to PackageMinipulator.
 KEEP_PKG = 0
 REMOVE_PKG = 1
 EXIT = 2
@@ -34,22 +35,67 @@ class bcolors:
 
 
 
-def handle_response(term_rdeps):
+class PackageMinipulator:
+    def __init__(self, name):
+        self.name = name
+        self.rdeps = None
+        self.rrdeps = None
+        self.show = None
+
+
+    def has_rdeps(self):
+        if self.rdeps == None:
+            print('first time has_rdeps')
+            self.get_rdeps()
+
+        return self.rdeps.stdout.decode('utf-8').count('\n') > 2
+
+    def get_show_info(self):
+        if self.show == None:
+            print('first time get_show_info')
+            self.show = subprocess.run(['apt-cache', 'show', self.name], stdout=subprocess.PIPE)
+
+        return self.show.stdout.decode('utf-8')
+
+
+    def mark_auto(self):
+        term_auto = subprocess.run(['sudo', 'apt-mark', 'auto', self.name], stdout=subprocess.PIPE)
+
+        return term_auto.stdout.decode('utf-8')
+
+    def get_rdeps(self):
+        if self.rdeps == None:
+            print('first time get_rdeps')
+            self.rdeps = subprocess.run(['apt', 'rdepends', '--installed', self.name], stdout=subprocess.PIPE)
+
+        return self.rdeps.stdout.decode('utf-8')
+
+
+    def get_rrdeps(self):
+        if self.rrdeps == None:
+            print('first time get_rrdeps')
+            self.rrdeps = subprocess.run(['apt', 'rdepends', '--installed', '--recurse', self.name],  stdout=subprocess.PIPE)
+
+        return self.rrdeps.stdout.decode('utf-8')
+
+
+
+def handle_response(pkg):
     while True:
         response = input(bcolors.BOLD + 'Enter a command (h for help): ' + bcolors.ENDC)
 
         if response == 'h':
             print(MENU)
         elif response == 's':
-            term_show = subprocess.run(['apt-cache', 'show', term_rdeps.args[3]])
+            print(pkg.get_show_info())
         elif response == 'r':
-            print(term_rdeps.stdout.decode('utf-8'))
+            print(pkg.get_rdeps())
         elif response == 'rr':
-            term_recurse_rdeps = subprocess.run(term_rdeps.args + ['--recurse',])
+            print(pkg.get_rrdeps())
         elif response == 'p':
             return KEEP_PKG
         elif response == 'a':
-            term_make_auto = subprocess.run(['sudo', 'apt-mark', 'auto', term_rdeps.args[3]])
+            print(pkg.mark_auto())
             return REMOVE_PKG
         elif response == 'c':
             return REMOVE_PKG
@@ -67,20 +113,19 @@ with open(SOURCE_FILE_NAME) as source_file, open(OUTPUT_FILE_NAME, 'w+') as outp
             output_file.write(line)
             continue
 
-        term_rdeps = subprocess.run(['apt', 'rdepends', '--installed', line.strip()], stdout=subprocess.PIPE)
-        num_lines = term_rdeps.stdout.decode("utf-8").count('\n')
+        pkg = PackageMinipulator(line.strip())
 
-        if num_lines <= 2:
-            output_file.write(line)
-        else:
-            print(term_rdeps.stdout.decode("utf-8"))
-            result = handle_response(term_rdeps)
+        if pkg.has_rdeps():
+            print(pkg.get_rdeps())
+            result = handle_response(pkg)
 
             if result == KEEP_PKG:
                 output_file.write(line)
             elif result == EXIT:
                 output_file.write(line)
                 quit = True
+        else:
+            output_file.write(line)
 
 rename(SOURCE_FILE_NAME, OLD_FILE_NAME)
 rename(OUTPUT_FILE_NAME, SOURCE_FILE_NAME)
