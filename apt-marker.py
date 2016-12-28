@@ -107,7 +107,7 @@ class Menu:
             'r': partial(print, pkg.get_rdeps()),
             'rr': partial(print, pkg.get_rrdeps()),
             'p': pkg.mark_keep,
-            'a': lambda: pkg.mark_auto(),   # Needed for lazy evaluation. Yay Python!...
+            'a': pkg.mark_auto,
             'c': pkg.mark_remove,
             'q': respond_quit,
         }
