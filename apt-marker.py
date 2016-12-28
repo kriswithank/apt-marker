@@ -1,3 +1,4 @@
+from enum import Enum
 from os import rename
 import subprocess
 
@@ -7,6 +8,10 @@ SOURCE_FILE_NAME = 'packages.txt'
 OUTPUT_FILE_NAME = 'packages.results.txt'
 OLD_FILE_NAME = 'packages.old.txt'
 
+# TODO remove EXIT GLOBAL VARIABLE (put in menu class?)
+EXIT = 1
+
+# TODO: make menu class
 MENU = """  s -> apt show package
   p -> pass on package (do nothing)
   h -> help
@@ -15,11 +20,6 @@ MENU = """  s -> apt show package
   q -> quit
   r -> apt rdepends --installed
   rr -> apt rdepends --installed --recurse"""
-
-# TODO: move these to PackageMinipulator.
-KEEP_PKG = 0
-REMOVE_PKG = 1
-EXIT = 2
 
 
 
@@ -35,12 +35,19 @@ class bcolors:
 
 
 
-class PackageMinipulator:
+class PkgMinipultor:
+
+    class Status(Enum):
+        UNDECIDED = 0
+        KEEP = 1
+        REMOVE = 2
+
     def __init__(self, name):
         self.name = name
         self.rdeps = None
         self.rrdeps = None
         self.show = None
+        self.status = PkgMinipultor.Status.UNDECIDED
 
 
     def has_rdeps(self):
@@ -60,8 +67,17 @@ class PackageMinipulator:
 
     def mark_auto(self):
         term_auto = subprocess.run(['sudo', 'apt-mark', 'auto', self.name], stdout=subprocess.PIPE)
-
+        self.mark_remove()
         return term_auto.stdout.decode('utf-8')
+
+
+    def mark_keep(self):
+        self.status = PkgMinipultor.Status.KEEP
+
+
+    def mark_remove(self):
+        self.status = PkgMinipultor.Status.REMOVE
+
 
     def get_rdeps(self):
         if self.rdeps == None:
@@ -81,7 +97,19 @@ class PackageMinipulator:
 
 
 def handle_response(pkg):
-    while True:
+
+    # responses = {
+    #     'h': lambda: print(MENU),
+    #     's': lambda: print(pgk.show_info()),
+    #     'r': lambda: print(pkg.get_rdeps()),
+    #     'rr': lambda: print(pkg.get_rrdeps()),
+    #     'p': pkg.mark_keep,
+    #     'a': lambda: print(pkg.mark_auto()),
+    #     'c': pkg.mark_remove,
+    #     'q': return EXIT
+    # }
+
+    while pkg.status == PkgMinipultor.Status.UNDECIDED:
         response = input(bcolors.BOLD + 'Enter a command (h for help): ' + bcolors.ENDC)
 
         if response == 'h':
@@ -93,30 +121,30 @@ def handle_response(pkg):
         elif response == 'rr':
             print(pkg.get_rrdeps())
         elif response == 'p':
-            return KEEP_PKG
+            pkg.mark_keep()
         elif response == 'a':
             print(pkg.mark_auto())
-            return REMOVE_PKG
         elif response == 'c':
-            return REMOVE_PKG
+            pkg.mark_remove()
         elif response == 'q':
             return EXIT
         else:
             print("Invalid response")
 
 
-quit = False
+
 with open(SOURCE_FILE_NAME) as source_file, open(OUTPUT_FILE_NAME, 'w+') as output_file:
+    quit = False
     for line in source_file:
 
-        pkg = PackageMinipulator(line.strip())
+        pkg = PkgMinipultor(line.strip())
 
         if (not quit) and pkg.has_rdeps():
             print(pkg.get_rdeps())
             result = handle_response(pkg)
 
-            if result == REMOVE_PKG:
-                continue
+            if pkg.status == PkgMinipultor.Status.REMOVE:
+                continue    # Do not write pkg to output_file.
             elif result == EXIT:
                 quit = True
 
