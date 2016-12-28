@@ -1,3 +1,4 @@
+from functools import partial
 from enum import Enum
 from os import rename
 import subprocess
@@ -7,19 +8,6 @@ import subprocess
 SOURCE_FILE_NAME = 'packages.txt'
 OUTPUT_FILE_NAME = 'packages.results.txt'
 OLD_FILE_NAME = 'packages.old.txt'
-
-# TODO remove EXIT GLOBAL VARIABLE (put in menu class?)
-EXIT = 1
-
-# TODO: make menu class
-MENU = """  s -> apt show package
-  p -> pass on package (do nothing)
-  h -> help
-  a -> sudo apt-make auto package
-  c -> confirm manual
-  q -> quit
-  r -> apt rdepends --installed
-  rr -> apt rdepends --installed --recurse"""
 
 
 
@@ -52,14 +40,12 @@ class PkgMinipultor:
 
     def has_rdeps(self):
         if self.rdeps == None:
-            print('first time has_rdeps')
             self.get_rdeps()
 
         return self.rdeps.stdout.decode('utf-8').count('\n') > 2
 
     def get_show_info(self):
         if self.show == None:
-            print('first time get_show_info')
             self.show = subprocess.run(['apt-cache', 'show', self.name], stdout=subprocess.PIPE)
 
         return self.show.stdout.decode('utf-8')
@@ -81,7 +67,6 @@ class PkgMinipultor:
 
     def get_rdeps(self):
         if self.rdeps == None:
-            print('first time get_rdeps')
             self.rdeps = subprocess.run(['apt', 'rdepends', '--installed', self.name], stdout=subprocess.PIPE)
 
         return self.rdeps.stdout.decode('utf-8')
@@ -89,64 +74,66 @@ class PkgMinipultor:
 
     def get_rrdeps(self):
         if self.rrdeps == None:
-            print('first time get_rrdeps')
             self.rrdeps = subprocess.run(['apt', 'rdepends', '--installed', '--recurse', self.name],  stdout=subprocess.PIPE)
 
         return self.rrdeps.stdout.decode('utf-8')
 
 
 
-def handle_response(pkg):
+class Menu:
 
-    # responses = {
-    #     'h': lambda: print(MENU),
-    #     's': lambda: print(pgk.show_info()),
-    #     'r': lambda: print(pkg.get_rdeps()),
-    #     'rr': lambda: print(pkg.get_rrdeps()),
-    #     'p': pkg.mark_keep,
-    #     'a': lambda: print(pkg.mark_auto()),
-    #     'c': pkg.mark_remove,
-    #     'q': return EXIT
-    # }
+    def __init__(self):
+        self.quit = False
 
-    while pkg.status == PkgMinipultor.Status.UNDECIDED:
-        response = input(bcolors.BOLD + 'Enter a command (h for help): ' + bcolors.ENDC)
+    def __str__(self):
+        return ("  s -> apt show package\n"
+                "  p -> pass on package (do nothing)\n"
+                "  h -> help\n"
+                "  a -> sudo apt-make auto package\n"
+                "  c -> confirm manual\n"
+                "  q -> quit\n"
+                "  r -> apt rdepends --installed\n"
+                "  rr -> apt rdepends --installed --recurse\n")
 
-        if response == 'h':
-            print(MENU)
-        elif response == 's':
-            print(pkg.get_show_info())
-        elif response == 'r':
-            print(pkg.get_rdeps())
-        elif response == 'rr':
-            print(pkg.get_rrdeps())
-        elif response == 'p':
-            pkg.mark_keep()
-        elif response == 'a':
-            print(pkg.mark_auto())
-        elif response == 'c':
-            pkg.mark_remove()
-        elif response == 'q':
-            return EXIT
-        else:
-            print("Invalid response")
+
+    def handle_response(self, pkg):
+
+        def respond_quit():
+            self.quit = True
+
+        responses = {
+            'h': partial(print, str(self)),
+            's': partial(print, pkg.get_show_info()),
+            'r': partial(print, pkg.get_rdeps()),
+            'rr': partial(print, pkg.get_rrdeps()),
+            'p': pkg.mark_keep,
+            'a': lambda: pkg.mark_auto(),   # Needed for lazy evaluation. Yay Python!...
+            'c': pkg.mark_remove,
+            'q': respond_quit,
+        }
+
+        while (not self.quit) and pkg.status == PkgMinipultor.Status.UNDECIDED:
+            response = input(bcolors.BOLD + 'Enter a command (h for help): ' + bcolors.ENDC)
+
+            try:
+                responses[response]()
+            except:
+                print('Invalid response')
 
 
 
 with open(SOURCE_FILE_NAME) as source_file, open(OUTPUT_FILE_NAME, 'w+') as output_file:
-    quit = False
+    menu = Menu()
     for line in source_file:
 
         pkg = PkgMinipultor(line.strip())
 
-        if (not quit) and pkg.has_rdeps():
+        if (not menu.quit) and pkg.has_rdeps():
             print(pkg.get_rdeps())
-            result = handle_response(pkg)
+            menu.handle_response(pkg)
 
             if pkg.status == PkgMinipultor.Status.REMOVE:
                 continue    # Do not write pkg to output_file.
-            elif result == EXIT:
-                quit = True
 
         output_file.write(line)
 
